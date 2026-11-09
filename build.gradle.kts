@@ -46,6 +46,10 @@ buildscript {
 
 val highApiProjects = arrayOf("editor-lsp")
 
+fun hasProjectProperty(name: String): Boolean {
+    return providers.gradleProperty(name).orNull?.isNotBlank() == true
+}
+
 fun Project.configureAndroidAndKotlin() {
     extensions.findByType<CommonExtension>()?.apply {
         compileSdk { version = release(Versions.compileSdkVersion) }
@@ -81,6 +85,12 @@ fun Project.configureAndroidAndKotlin() {
     }
 }
 
+val canPublishToMavenCentral = hasProjectProperty("mavenCentralUsername") &&
+    hasProjectProperty("mavenCentralPassword")
+val canSignPublications = hasProjectProperty("signingInMemoryKey") &&
+    hasProjectProperty("signingInMemoryKeyId") &&
+    hasProjectProperty("signingInMemoryKeyPassword")
+
 subprojects {
     group = "io.github.rosemoe"
     version = Versions.artifactVersion
@@ -95,8 +105,12 @@ subprojects {
     plugins.withId("com.vanniktech.maven.publish.base") {
         configure<MavenPublishBaseExtension> {
             pomFromGradleProperties()
-            publishToMavenCentral()
-            signAllPublications()
+            if (canPublishToMavenCentral) {
+                publishToMavenCentral()
+            }
+            if (canSignPublications) {
+                signAllPublications()
+            }
             if ("editor-bom" != this@subprojects.name) {
                 configure(
                     AndroidSingleVariantLibrary(
